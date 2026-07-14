@@ -93,21 +93,20 @@ def predict(applicant: Applicant):
         """
         try:
             response = gemini_client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-1.5-flash",
                 contents=prompt
             )
             gemini_recommendation = response.text
         except Exception as api_err:
             gemini_recommendation = f"Failed to fetch Gemini insights: {str(api_err)}"
 
-    # --- UPDATE YOUR RETURN DICTIONARY ---
     return {
         "risk_probability": round(float(probability), 3),
         "prediction": prediction,
         "top_reasons": explanation[:3],
         "gemini_recommendation": gemini_recommendation  # <-- Ye key add karo
     }
-
+# ---------------------------------------------------------------
 
 
     # return {
