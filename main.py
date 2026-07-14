@@ -1,8 +1,21 @@
+import os
+from google import genai
+# for gemni
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import pandas as pd
 import joblib
+
+# ----------------------------------------------------
+try:
+    gemini_client = genai.Client()
+except Exception as e:
+    print("Warning: Gemini Client could not initialize. Check GEMINI_API_KEY environment variable.", e)
+    gemini_client = None
+
+# --------------------------------------------------------
 
 model = joblib.load("model.pkl")
 scaler = joblib.load("scaler.pkl")
@@ -52,9 +65,52 @@ def predict(applicant: Applicant):
             "impact": round(float(abs(contrib)), 3)
         })
     explanation.sort(key=lambda x: x["impact"], reverse=True)
+    top_reasons = explanation[:3]
+    
+# --- IS CODE KO RETURN SE THEEK PEHLE PASTE KARO ---
+    gemini_recommendation = "Gemini integration is not configured."
+    if gemini_client:
+        prompt = f"""
+        You are an expert financial and credit risk advisor. 
+        A customer applied for a loan. Here are the details:
+        - Age: {applicant.age}
+        - Monthly Income: {applicant.income} INR
+        - Requested Loan Amount: {applicant.loan_amount} INR
+        - Credit History: {applicant.credit_history_years} years
+        - Existing Loans: {applicant.existing_loans}
+        - Employment: {applicant.employment_years} years
+        - Debt to Income Ratio: {applicant.debt_to_income}
+        
+        Our machine learning model classified this applicant as: {prediction} (Probability of default: {round(probability*100, 2)}%).
+        The mathematical reasons for this decision are:
+        1. {explanation[0]['feature']} ({explanation[0]['effect']})
+        2. {explanation[1]['feature']} ({explanation[1]['effect']})
+        
+        Write a very short, polite, and constructive recommendation (3-4 sentences maximum) in Hinglish.
+        If they are 'High Risk', tell them what 1 or 2 specific steps they can take to improve their chances (e.g., reduce existing loans, increase down payment).
+        If they are 'Low Risk', congratulate them and give a quick tip on maintaining their good credit score.
+        """
+        try:
+            response = gemini_client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
+            )
+            gemini_recommendation = response.text
+        except Exception as api_err:
+            gemini_recommendation = f"Failed to fetch Gemini insights: {str(api_err)}"
 
+    # --- UPDATE YOUR RETURN DICTIONARY ---
     return {
         "risk_probability": round(float(probability), 3),
         "prediction": prediction,
-        "top_reasons": explanation[:3]
+        "top_reasons": explanation[:3],
+        "gemini_recommendation": gemini_recommendation  # <-- Ye key add karo
     }
+
+
+
+    # return {
+    #     "risk_probability": round(float(probability), 3),
+    #     "prediction": prediction,
+    #     "top_reasons": explanation[:3]
+    # }
