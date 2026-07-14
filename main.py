@@ -66,6 +66,7 @@ def predict(applicant: Applicant):
         })
     explanation.sort(key=lambda x: x["impact"], reverse=True)
     top_reasons = explanation[:3]
+    explanation = top_reasons
     
 # --- IS CODE KO RETURN SE THEEK PEHLE PASTE KARO ---
     gemini_recommendation = "Gemini integration is not configured."
